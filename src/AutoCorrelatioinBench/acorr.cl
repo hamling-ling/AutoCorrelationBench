@@ -1,3 +1,5 @@
+#pragma OPENCL EXTENSION cl_khr_fp16 : enable
+
 /**
  * Auto correlation computation
  * f(tau) = sum f(x) * f(x+tau) for x from 0 to N-tau
@@ -79,7 +81,7 @@ uint us8_dot(ushort8 a, ushort8 b)
     return sum;
 }
 
-__kernel void acorr_vec8(
+__kernel void acorr_us8(
     const    int    N,
     __global ushort* sample,
     __global ushort* output)
@@ -97,3 +99,22 @@ __kernel void acorr_vec8(
     // copy to ouput buffer
     output[global_id] = sum;
 }
+
+__kernel void acorr_hf8(
+    const    int    N,
+    __global half* sample,
+    __global half* output)
+{
+    const int global_id = get_global_id(0);
+
+    const int tau = global_id;
+    half    sum = 0.0f;
+    for(int i = 0; i < N - tau; i+=8) {
+        half8 a = vload8(i, sample);
+        half8 b = vload8(i+tau, sample);
+        sum += dot(a.s0123, b.s0123) + dot(a.s4567, b.s4567);
+    }
+    // copy to ouput buffer
+    output[global_id] = sum;
+}
+
