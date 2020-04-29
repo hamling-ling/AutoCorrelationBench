@@ -62,8 +62,8 @@ __kernel void acorr_vec4(
     float     sum = 0.0f;
     for(int i = 0; i < N - tau; i+=4) {
         //printf("[%d]+=[%d]*[%d]\n", global_id, i, i+tau);
-        float4 a = (sample[i], sample[i+1], sample[i+2], sample[i+3]);
-        float4 b = (sample[i+tau], sample[i+tau+1], sample[i+tau+2], sample[i+tau+3]);
+        float4 a = vload4(i, sample);
+        float4 b = vload4(i+tau, sample);
         sum += dot(a, b);
         //printf("[%d]*[%d]=(%f,%f,%f,%f)*(%f,%f,%f,%f)=%f\n", i, i+tau,
         //       a->x, a->y, a->z, a->w, b->x, b->y, b->z, b->w, sum);
@@ -89,13 +89,10 @@ __kernel void acorr_vec8(
     const int tau = global_id;
     uint    sum = 0.0f;
     for(int i = 0; i < N - tau; i+=8) {
-        //printf("[%d]+=[%d]*[%d]\n", global_id, i, i+tau);
-        ushort8 a = (sample[i+0], sample[i+1], sample[i+2], sample[i+3], sample[i+4], sample[i+5], sample[i+6], sample[i+7]);
-        ushort8 b = (sample[i+tau+0], sample[i+tau+1], sample[i+tau+2], sample[i+tau+3], sample[i+tau+4], sample[i+tau+5], sample[i+tau+6], sample[i+tau+7]);
+        ushort8 a = vload8(i, sample);
+        ushort8 b = vload8(i+tau, sample);
 
         sum += us8_dot(a, b);
-        //printf("[%d]*[%d]=(%f,%f,%f,%f)*(%f,%f,%f,%f)=%f\n", i, i+tau,
-        //       a->x, a->y, a->z, a->w, b->x, b->y, b->z, b->w, sum);
     }
     // copy to ouput buffer
     output[global_id] = sum;
