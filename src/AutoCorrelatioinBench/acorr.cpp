@@ -29,7 +29,7 @@
 #endif
 #define SAMPLE_SIZE_N   1024      // Sample Size
 #define WORK_GROUP_SIZE 128       // Workgroup size
-
+#define LOOPS           10000     // Iteration for benchmark
 //------------------------------------------------------------------------------
 //  functions
 //------------------------------------------------------------------------------
@@ -44,11 +44,13 @@ int main(int argc, char *argv[])
     // N samples + some for vector computation as an input
     std::vector<float> h_sample( N + 32, 0);
     std::vector<uint16_t> h_sample16( N + 32, 0);
+    std::vector<__fp16> h_samplefp16( N + 32, 0);
 
     for ( int i = 0; i < N; i++) {
         h_sample[i]   = (float)sin(3.5 * i * M_PI / N);
         //cout << "orig[" << i << "] = " << h_sample[i] << endl;
         h_sample16[i] = round(h_sample[i] /63665.0f);
+        h_samplefp16[i] = (__fp16)h_sample[i];
     }
 
     try
@@ -94,7 +96,7 @@ int main(int argc, char *argv[])
         {
             cl::make_kernel<int, cl::Buffer, cl::Buffer> acorr( program, "acorr");
             double start_time   = static_cast<double>( timer.getTimeMilliseconds()) / 1000.0;
-            for(int i = 0; i < 10000; i++) {
+            for(int i = 0; i < LOOPS; i++) {
                 // compute
                 acorr(cl::EnqueueArgs( queue, global),
                       N,
@@ -107,9 +109,9 @@ int main(int argc, char *argv[])
 
             std::vector<float> h_output( N, 0);
             cl::copy(queue, d_output, h_output.begin(), h_output.end());
-            cout << run_time << " sec" << endl;
 
             cout << "basic result ----" << endl;
+            cout << run_time << " sec" << endl;
             for(int i = 0; i < N; i++) {
                 //cout << "[" << i << "]=" << h_output[i] << endl;
             }
@@ -122,7 +124,7 @@ int main(int argc, char *argv[])
             cl::LocalSpaceArg localmem = cl::Local(sizeof(float) * WORK_GROUP_SIZE);
 
             double start_time   = static_cast<double>( timer.getTimeMilliseconds()) / 1000.0;
-            for(int i = 0; i < 10000; i++) {
+            for(int i = 0; i < LOOPS; i++) {
                 // compute
                 acorr_local(cl::EnqueueArgs( queue, global, local),
                       N,
@@ -136,6 +138,8 @@ int main(int argc, char *argv[])
 
             std::vector<float> h_output( N, 0);
             cl::copy(queue, d_output, h_output.begin(), h_output.end());
+
+            cout << "local mem result ----" << endl;
             cout << run_time << " sec" << endl;
         }
 
@@ -144,7 +148,7 @@ int main(int argc, char *argv[])
             cl::make_kernel<int, cl::Buffer, cl::Buffer> acorr_vec4( program, "acorr_vec4");
 
             double start_time   = static_cast<double>( timer.getTimeMilliseconds()) / 1000.0;
-            for(int i = 0; i < 10000; i++) {
+            for(int i = 0; i < LOOPS; i++) {
                 // compute
                 acorr_vec4(cl::EnqueueArgs( queue, global),
                       N,
@@ -157,9 +161,9 @@ int main(int argc, char *argv[])
 
             std::vector<float> h_output( N, 0);
             cl::copy(queue, d_output, h_output.begin(), h_output.end());
-            cout << run_time << " sec" << endl;
 
-            cout << " result ----" << endl;
+            cout << "float4 result ----" << endl;
+            cout << run_time << " sec" << endl;
             for(int i = 0; i < N; i++) {
                 //cout << "[" << i << "]=" << h_output[i] << endl;
             }
@@ -173,12 +177,12 @@ int main(int argc, char *argv[])
                                              sizeof(h_sample16[0]) * h_sample16.size()
                                              );
 
-            cl::make_kernel<int, cl::Buffer, cl::Buffer> acorr_vec8( program, "acorr_vec8");
+            cl::make_kernel<int, cl::Buffer, cl::Buffer> acorr_us8( program, "acorr_us8");
 
             double start_time   = static_cast<double>( timer.getTimeMilliseconds()) / 1000.0;
-            for(int i = 0; i < 10000; i++) {
+            for(int i = 0; i < LOOPS; i++) {
                 // compute
-                acorr_vec8(cl::EnqueueArgs( queue, global),
+                acorr_us8(cl::EnqueueArgs( queue, global),
                       N,
                       d_sample16,
                       d_output16
@@ -189,9 +193,41 @@ int main(int argc, char *argv[])
 
             std::vector<uint16_t> h_output16( N, 0);
             cl::copy(queue, d_output, h_output16.begin(), h_output16.end());
-            cout << run_time << " sec" << endl;
 
-            cout << " result ----" << endl;
+            cout << "ushort8 result ----" << endl;
+            cout << run_time << " sec" << endl;
+            for(int i = 0; i < N; i++) {
+                //cout << "[" << i << "]=" << h_output[i] << endl;
+            }
+        }
+
+        // bench mark using half8
+        {
+            cl::Buffer d_samplefp16 = cl::Buffer(context, h_samplefp16.begin(), h_samplefp16.end(), true);
+            cl::Buffer d_outputfp16 = cl::Buffer(context,
+                                             CL_MEM_READ_WRITE,
+                                             sizeof(h_samplefp16[0]) * h_samplefp16.size()
+                                             );
+
+            cl::make_kernel<int, cl::Buffer, cl::Buffer> acorr_hf8( program, "acorr_hf8");
+
+            double start_time   = static_cast<double>( timer.getTimeMilliseconds()) / 1000.0;
+            for(int i = 0; i < LOOPS; i++) {
+                // compute
+                acorr_hf8(cl::EnqueueArgs( queue, global),
+                      N,
+                      d_samplefp16,
+                      d_outputfp16
+                      );
+                queue.finish();
+            }
+            double run_time   = static_cast<double>( timer.getTimeMilliseconds()) / 1000.0 - start_time;
+
+            std::vector<uint16_t> h_outputfp16( N, 0);
+            cl::copy(queue, d_outputfp16, h_outputfp16.begin(), h_outputfp16.end());
+
+            cout << "half8 result ----" << endl;
+            cout << run_time << " sec" << endl;
             for(int i = 0; i < N; i++) {
                 //cout << "[" << i << "]=" << h_output[i] << endl;
             }
