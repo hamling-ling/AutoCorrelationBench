@@ -62,9 +62,9 @@ __kernel void acorr_vec4(
     float     sum = 0.0f;
     for(int i = 0; i < N - tau; i+=4) {
         //printf("[%d]+=[%d]*[%d]\n", global_id, i, i+tau);
-        float4* a = (float4*)&sample[i];
-        float4* b = (float4*)&sample[i+tau];
-        sum += dot(*a, *b);
+        float4 a = (sample[i], sample[i+1], sample[i+2], sample[i+3]);
+        float4 b = (sample[i+tau], sample[i+tau+1], sample[i+tau+2], sample[i+tau+3]);
+        sum += dot(a, b);
         //printf("[%d]*[%d]=(%f,%f,%f,%f)*(%f,%f,%f,%f)=%f\n", i, i+tau,
         //       a->x, a->y, a->z, a->w, b->x, b->y, b->z, b->w, sum);
     }
