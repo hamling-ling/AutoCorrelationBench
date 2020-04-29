@@ -51,3 +51,24 @@ __kernel void acorr_local(
     wait_group_events(1, &evt_copy_out);
 }
 
+__kernel void acorr_vec4(
+    const    int    N,
+    __global float* sample,
+    __global float* output)
+{
+    const int global_id = get_global_id(0);
+
+    const int tau = global_id;
+    float     sum = 0.0f;
+    for(int i = 0; i < N - tau; i+=4) {
+        //printf("[%d]+=[%d]*[%d]\n", global_id, i, i+tau);
+        float4* a = (float4*)&sample[i];
+        float4* b = (float4*)&sample[i+tau];
+        sum += dot(*a, *b);
+        //printf("[%d]*[%d]=(%f,%f,%f,%f)*(%f,%f,%f,%f)=%f\n", i, i+tau,
+        //       a->x, a->y, a->z, a->w, b->x, b->y, b->z, b->w, sum);
+    }
+    // copy to ouput buffer
+    output[global_id] = sum;
+}
+

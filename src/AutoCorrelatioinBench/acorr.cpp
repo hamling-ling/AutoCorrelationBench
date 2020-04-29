@@ -41,12 +41,11 @@ int main(int argc, char *argv[])
 {
     int         N          = SAMPLE_SIZE_N;  // Real data sampling size
     util::Timer timer;                       // timing
+   // N samples + some for vector computation as an input
+    std::vector<float> h_sample( N + 32, 0);
 
-    std::vector<float> h_sample( N, 0);   // N complex samples as an input
-
-	for ( int i = 0; i < h_sample.size(); i++) {
+	for ( int i = 0; i < N; i++) {
 		h_sample[i]   = (float)sin(3.5 * i * M_PI / N);
-        h_sample[i+1] = 0.0f;
         //cout << "orig[" << i << "] = " << h_sample[i] << endl;
 	}
 
@@ -107,6 +106,11 @@ int main(int argc, char *argv[])
             std::vector<float> h_output( N, 0);
             cl::copy(queue, d_output, h_output.begin(), h_output.end());
             cout << run_time << " sec" << endl;
+
+            cout << "basic result ----" << endl;
+            for(int i = 0; i < N; i++) {
+                //cout << "[" << i << "]=" << h_output[i] << endl;
+            }
         }
 
         // bench mark using local mem
@@ -131,6 +135,33 @@ int main(int argc, char *argv[])
             std::vector<float> h_output( N, 0);
             cl::copy(queue, d_output, h_output.begin(), h_output.end());
             cout << run_time << " sec" << endl;
+        }
+
+        // bench mark using local mem
+        {
+            cl::NDRange global4(N);
+            cl::make_kernel<int, cl::Buffer, cl::Buffer> acorr_vec4( program, "acorr_vec4");
+
+            double start_time   = static_cast<double>( timer.getTimeMilliseconds()) / 1000.0;
+            for(int i = 0; i < 10000; i++) {
+                // compute
+                acorr_vec4(cl::EnqueueArgs( queue, global4),
+                      N,
+                      d_sample,
+                      d_output
+                      );
+                queue.finish();
+            }
+            double run_time   = static_cast<double>( timer.getTimeMilliseconds()) / 1000.0 - start_time;
+
+            std::vector<float> h_output( N, 0);
+            cl::copy(queue, d_output, h_output.begin(), h_output.end());
+            cout << run_time << " sec" << endl;
+
+            cout << " result ----" << endl;
+            for(int i = 0; i < N; i++) {
+                //cout << "[" << i << "]=" << h_output[i] << endl;
+            }
         }
     } catch (cl::Error err) {
         std::cout << "Exception\n";
