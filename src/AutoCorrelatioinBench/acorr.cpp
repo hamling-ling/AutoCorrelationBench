@@ -41,13 +41,15 @@ int main(int argc, char *argv[])
 {
     int         N          = SAMPLE_SIZE_N;  // Real data sampling size
     util::Timer timer;                       // timing
-   // N samples + some for vector computation as an input
+    // N samples + some for vector computation as an input
     std::vector<float> h_sample( N + 32, 0);
+    std::vector<uint16_t> h_sample16( N + 32, 0);
 
-	for ( int i = 0; i < N; i++) {
-		h_sample[i]   = (float)sin(3.5 * i * M_PI / N);
+    for ( int i = 0; i < N; i++) {
+        h_sample[i]   = (float)sin(3.5 * i * M_PI / N);
         //cout << "orig[" << i << "] = " << h_sample[i] << endl;
-	}
+        h_sample16[i] = round(h_sample[i] /63665.0f);
+    }
 
     try
     {
@@ -137,15 +139,14 @@ int main(int argc, char *argv[])
             cout << run_time << " sec" << endl;
         }
 
-        // bench mark using local mem
+        // bench mark using foat4
         {
-            cl::NDRange global4(N);
             cl::make_kernel<int, cl::Buffer, cl::Buffer> acorr_vec4( program, "acorr_vec4");
 
             double start_time   = static_cast<double>( timer.getTimeMilliseconds()) / 1000.0;
             for(int i = 0; i < 10000; i++) {
                 // compute
-                acorr_vec4(cl::EnqueueArgs( queue, global4),
+                acorr_vec4(cl::EnqueueArgs( queue, global),
                       N,
                       d_sample,
                       d_output
@@ -156,6 +157,38 @@ int main(int argc, char *argv[])
 
             std::vector<float> h_output( N, 0);
             cl::copy(queue, d_output, h_output.begin(), h_output.end());
+            cout << run_time << " sec" << endl;
+
+            cout << " result ----" << endl;
+            for(int i = 0; i < N; i++) {
+                //cout << "[" << i << "]=" << h_output[i] << endl;
+            }
+        }
+
+        // bench mark using ushort16
+        {
+            cl::Buffer d_sample16 = cl::Buffer(context, h_sample16.begin(), h_sample16.end(), true);
+            cl::Buffer d_output16 = cl::Buffer(context,
+                                             CL_MEM_READ_WRITE,
+                                             sizeof(h_sample16[0]) * h_sample16.size()
+                                             );
+
+            cl::make_kernel<int, cl::Buffer, cl::Buffer> acorr_vec8( program, "acorr_vec8");
+
+            double start_time   = static_cast<double>( timer.getTimeMilliseconds()) / 1000.0;
+            for(int i = 0; i < 10000; i++) {
+                // compute
+                acorr_vec8(cl::EnqueueArgs( queue, global),
+                      N,
+                      d_sample16,
+                      d_output16
+                      );
+                queue.finish();
+            }
+            double run_time   = static_cast<double>( timer.getTimeMilliseconds()) / 1000.0 - start_time;
+
+            std::vector<uint16_t> h_output16( N, 0);
+            cl::copy(queue, d_output, h_output16.begin(), h_output16.end());
             cout << run_time << " sec" << endl;
 
             cout << " result ----" << endl;
