@@ -89,7 +89,7 @@ __kernel void acorr_us8(
     const int global_id = get_global_id(0);
 
     const int tau = global_id;
-    uint    sum = 0.0f;
+    uint      sum = 0.0f;
     for(int i = 0; i < N - tau; i+=8) {
         ushort8 a = vload8(i, sample);
         ushort8 b = vload8(i+tau, sample);
@@ -108,7 +108,7 @@ __kernel void acorr_hf8(
     const int global_id = get_global_id(0);
 
     const int tau = global_id;
-    half    sum = 0.0f;
+    float     sum = 0.0f;
     for(int i = 0; i < N - tau; i+=8) {
         half8 a = vload8(i, sample);
         half8 b = vload8(i+tau, sample);
@@ -126,7 +126,7 @@ __kernel void acorr_hf16(
     const int global_id = get_global_id(0);
 
     const int tau = global_id;
-    half    sum = 0.0f;
+    float     sum = 0.0f;
     for(int i = 0; i < N - tau; i+=16) {
         half16 a = vload16(i, sample);
         half16 b = vload16(i+tau, sample);
@@ -145,7 +145,7 @@ __kernel void acorr_hf32(
     const int global_id = get_global_id(0);
 
     const int tau = global_id;
-    half    sum = 0.0f;
+    float     sum = 0.0f;
     for(int i = 0; i < N - tau; i+=32) {
         half16 a0 = vload16(i, sample);
         half16 a1 = vload16(i, sample);
