@@ -232,6 +232,70 @@ int main(int argc, char *argv[])
                 //cout << "[" << i << "]=" << h_output[i] << endl;
             }
         }
+
+        // bench mark using half16
+        {
+            cl::Buffer d_samplefp16 = cl::Buffer(context, h_samplefp16.begin(), h_samplefp16.end(), true);
+            cl::Buffer d_outputfp16 = cl::Buffer(context,
+                                             CL_MEM_READ_WRITE,
+                                             sizeof(h_samplefp16[0]) * h_samplefp16.size()
+                                             );
+
+            cl::make_kernel<int, cl::Buffer, cl::Buffer> acorr_hf16( program, "acorr_hf16");
+
+            double start_time   = static_cast<double>( timer.getTimeMilliseconds()) / 1000.0;
+            for(int i = 0; i < LOOPS; i++) {
+                // compute
+                acorr_hf16(cl::EnqueueArgs( queue, global),
+                      N,
+                      d_samplefp16,
+                      d_outputfp16
+                      );
+                queue.finish();
+            }
+            double run_time   = static_cast<double>( timer.getTimeMilliseconds()) / 1000.0 - start_time;
+
+            std::vector<uint16_t> h_outputfp16( N, 0);
+            cl::copy(queue, d_outputfp16, h_outputfp16.begin(), h_outputfp16.end());
+
+            cout << "half16 result ----" << endl;
+            cout << run_time << " sec" << endl;
+            for(int i = 0; i < N; i++) {
+                //cout << "[" << i << "]=" << h_output[i] << endl;
+            }
+        }
+
+        // bench mark using half16*2
+        {
+            cl::Buffer d_samplefp16 = cl::Buffer(context, h_samplefp16.begin(), h_samplefp16.end(), true);
+            cl::Buffer d_outputfp16 = cl::Buffer(context,
+                                             CL_MEM_READ_WRITE,
+                                             sizeof(h_samplefp16[0]) * h_samplefp16.size()
+                                             );
+
+            cl::make_kernel<int, cl::Buffer, cl::Buffer> acorr_hf32( program, "acorr_hf16");
+
+            double start_time   = static_cast<double>( timer.getTimeMilliseconds()) / 1000.0;
+            for(int i = 0; i < LOOPS; i++) {
+                // compute
+                acorr_hf32(cl::EnqueueArgs( queue, global),
+                      N,
+                      d_outputfp16,
+                      d_outputfp16
+                      );
+                queue.finish();
+            }
+            double run_time   = static_cast<double>( timer.getTimeMilliseconds()) / 1000.0 - start_time;
+
+            std::vector<uint16_t> h_outputfp16( N, 0);
+            cl::copy(queue, d_outputfp16, h_outputfp16.begin(), h_outputfp16.end());
+
+            cout << "half16*2 result ----" << endl;
+            cout << run_time << " sec" << endl;
+            for(int i = 0; i < N; i++) {
+                //cout << "[" << i << "]=" << h_output[i] << endl;
+            }
+        }
     } catch (cl::Error err) {
         std::cout << "Exception\n";
         std::cerr << "ERROR: "

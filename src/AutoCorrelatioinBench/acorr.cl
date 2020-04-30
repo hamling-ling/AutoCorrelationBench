@@ -118,3 +118,45 @@ __kernel void acorr_hf8(
     output[global_id] = sum;
 }
 
+__kernel void acorr_hf16(
+    const    int    N,
+    __global half* sample,
+    __global half* output)
+{
+    const int global_id = get_global_id(0);
+
+    const int tau = global_id;
+    half    sum = 0.0f;
+    for(int i = 0; i < N - tau; i+=16) {
+        half16 a = vload16(i, sample);
+        half16 b = vload16(i+tau, sample);
+        sum += (dot(a.s0123, b.s0123) + dot(a.s4567, b.s4567)
+                +dot(a.s89ab, b.s89ab) + dot(a.scdef, b.scdef));
+    }
+    // copy to ouput buffer
+    output[global_id] = sum;
+}
+
+__kernel void acorr_hf32(
+    const    int    N,
+    __global half* sample,
+    __global half* output)
+{
+    const int global_id = get_global_id(0);
+
+    const int tau = global_id;
+    half    sum = 0.0f;
+    for(int i = 0; i < N - tau; i+=32) {
+        half16 a0 = vload16(i, sample);
+        half16 a1 = vload16(i, sample);
+        half16 b0 = vload16(i+tau, sample);
+        half16 b1 = vload16(i+tau, sample);
+        sum += (dot(a0.s0123, b0.s0123) + dot(a0.s4567, b0.s4567)
+                +dot(a0.s89ab, b0.s89ab) + dot(a0.scdef, b0.scdef)
+                +dot(a1.s0123, b1.s0123) + dot(a1.s4567, b1.s4567)
+                +dot(a1.s89ab, b1.s89ab) + dot(a1.scdef, b1.scdef)
+                );
+    }
+    // copy to ouput buffer
+    output[global_id] = sum;
+}
