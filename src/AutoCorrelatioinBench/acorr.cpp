@@ -27,9 +27,9 @@
 #define CL_PATH         "acorr.cl"
 #define DEVICE_ID       0
 #endif
-#define SAMPLE_SIZE_N   1024      // Sample Size
-#define WORK_GROUP_SIZE 128       // Workgroup size
-#define LOOPS           10000     // Iteration for benchmark
+#define SAMPLE_SIZE_N   8      // Sample Size
+#define WORK_GROUP_SIZE 4       // Workgroup size
+#define LOOPS           1     // Iteration for benchmark
 //------------------------------------------------------------------------------
 //  functions
 //------------------------------------------------------------------------------
@@ -48,9 +48,10 @@ int main(int argc, char *argv[])
 
     for ( int i = 0; i < N; i++) {
         h_sample[i]   = (float)sin(3.5 * i * M_PI / N);
-        //cout << "orig[" << i << "] = " << h_sample[i] << endl;
         h_sample16[i] = round(h_sample[i] /63665.0f);
         h_samplefp16[i] = (__fp16)h_sample[i];
+        cout << "fp32[" << i << "] = " << h_sample[i] << endl;
+        cout << "fp16[" << i << "] = " << h_samplefp16[i] << endl;
     }
 
     try
@@ -85,6 +86,7 @@ int main(int argc, char *argv[])
 
         // Create the compute kernel from the program
         cl::NDRange global(N);
+        cl::NDRange local(WORK_GROUP_SIZE);
         // Setup device global memory
         cl::Buffer d_sample = cl::Buffer(context, h_sample.begin(), h_sample.end(), true);
         cl::Buffer d_output = cl::Buffer(context,
@@ -98,7 +100,7 @@ int main(int argc, char *argv[])
             double start_time   = static_cast<double>( timer.getTimeMilliseconds()) / 1000.0;
             for(int i = 0; i < LOOPS; i++) {
                 // compute
-                acorr(cl::EnqueueArgs( queue, global),
+                acorr(cl::EnqueueArgs( queue, global, local),
                       N,
                       d_sample,
                       d_output
@@ -119,7 +121,6 @@ int main(int argc, char *argv[])
 
         // bench mark using local mem
         {
-            cl::NDRange local(WORK_GROUP_SIZE);
             cl::make_kernel<int, cl::Buffer, cl::Buffer, cl::LocalSpaceArg> acorr_local( program, "acorr_local");
             cl::LocalSpaceArg localmem = cl::Local(sizeof(float) * WORK_GROUP_SIZE);
 
@@ -150,7 +151,7 @@ int main(int argc, char *argv[])
             double start_time   = static_cast<double>( timer.getTimeMilliseconds()) / 1000.0;
             for(int i = 0; i < LOOPS; i++) {
                 // compute
-                acorr_vec4(cl::EnqueueArgs( queue, global),
+                acorr_vec4(cl::EnqueueArgs( queue, global, local),
                       N,
                       d_sample,
                       d_output
@@ -182,7 +183,7 @@ int main(int argc, char *argv[])
             double start_time   = static_cast<double>( timer.getTimeMilliseconds()) / 1000.0;
             for(int i = 0; i < LOOPS; i++) {
                 // compute
-                acorr_us8(cl::EnqueueArgs( queue, global),
+                acorr_us8(cl::EnqueueArgs( queue, global, local),
                       N,
                       d_sample16,
                       d_output16
@@ -214,7 +215,7 @@ int main(int argc, char *argv[])
             double start_time   = static_cast<double>( timer.getTimeMilliseconds()) / 1000.0;
             for(int i = 0; i < LOOPS; i++) {
                 // compute
-                acorr_hf8(cl::EnqueueArgs( queue, global),
+                acorr_hf8(cl::EnqueueArgs( queue, global, local),
                       N,
                       d_samplefp16,
                       d_outputfp16
@@ -246,7 +247,7 @@ int main(int argc, char *argv[])
             double start_time   = static_cast<double>( timer.getTimeMilliseconds()) / 1000.0;
             for(int i = 0; i < LOOPS; i++) {
                 // compute
-                acorr_hf16(cl::EnqueueArgs( queue, global),
+                acorr_hf16(cl::EnqueueArgs( queue, global, local),
                       N,
                       d_samplefp16,
                       d_outputfp16
@@ -278,7 +279,7 @@ int main(int argc, char *argv[])
             double start_time   = static_cast<double>( timer.getTimeMilliseconds()) / 1000.0;
             for(int i = 0; i < LOOPS; i++) {
                 // compute
-                acorr_hf32(cl::EnqueueArgs( queue, global),
+                acorr_hf32(cl::EnqueueArgs( queue, global, local),
                       N,
                       d_outputfp16,
                       d_outputfp16
