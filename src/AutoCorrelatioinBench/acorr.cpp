@@ -27,9 +27,9 @@
 #define CL_PATH         "acorr.cl"
 #define DEVICE_ID       0
 #endif
-#define SAMPLE_SIZE_N   8      // Sample Size
-#define WORK_GROUP_SIZE 4       // Workgroup size
-#define LOOPS           1     // Iteration for benchmark
+#define SAMPLE_SIZE_N   1024      // Sample Size
+#define WORK_GROUP_SIZE 128       // Workgroup size
+#define LOOPS           10000     // Iteration for benchmark
 //------------------------------------------------------------------------------
 //  functions
 //------------------------------------------------------------------------------
@@ -50,8 +50,8 @@ int main(int argc, char *argv[])
         h_sample[i]   = (float)sin(3.5 * i * M_PI / N);
         h_sample16[i] = round(h_sample[i] /63665.0f);
         h_samplefp16[i] = (__fp16)h_sample[i];
-        cout << "fp32[" << i << "] = " << h_sample[i] << endl;
-        cout << "fp16[" << i << "] = " << h_samplefp16[i] << endl;
+        //cout << "fp32[" << i << "] = " << h_sample[i] << endl;
+        //cout << "fp16[" << i << "] = " << h_samplefp16[i] << endl;
     }
 
     try
